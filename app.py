@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from streamlit_mic_recorder import mic_recorder
 import time
+import os
 
 # 1. Konfiguration af siden (SEO & Ads fokus)
 st.set_page_config(page_title="SEO/Ads Møde-Butler", page_icon="🎯", layout="centered")
@@ -10,9 +11,21 @@ st.title("🎯 SEO & Ads Møde-Butler")
 st.write("Optag mødet live eller upload en fil for at få et struktureret referat.")
 
 # 2. SIKKERHED: Hent API-nøgle fra Streamlit Secrets
-# Dette forhindrer "API key leaked" fejl, da nøglen ikke står i koden.
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    
+    # --- START PÅ DEBUG-KODE ---
+    # Dette hjælper dig med at se præcis hvad din API-nøgle kan se.
+    with st.expander("🛠️ Debug: Tilgængelige modeller"):
+        try:
+            st.write("Din API-nøgle har adgang til følgende modeller:")
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    st.code(m.name)
+        except Exception as e:
+            st.error(f"Kunne ikke hente modelliste: {e}")
+    # --- SLUT PÅ DEBUG-KODE ---
+
 else:
     st.error("⚠️ API-nøgle mangler! Gå til 'Manage app' -> 'Settings' -> 'Secrets' og tilføj din nøgle.")
     st.stop()
@@ -25,7 +38,6 @@ audio_bytes = None
 with tab1:
     st.subheader("Optag direkte")
     st.write("Klik for at starte optagelsen via din mikrofon.")
-    # Mikrofon-komponenten
     audio_record = mic_recorder(
         start_prompt="🔴 Start optagelse",
         stop_prompt="⏹️ Stop og gem",
@@ -50,7 +62,7 @@ if audio_bytes:
     if st.button("Generér Referat ✨", type="primary", use_container_width=True):
         with st.spinner("Gemini transskriberer og analyserer mødet..."):
             try:
-                # Gem lyden midlertidigt som en fil til upload
+                # Gem lyden midlertidigt
                 temp_filename = "temp_audio.wav"
                 with open(temp_filename, "wb") as f:
                     f.write(audio_bytes)
@@ -58,7 +70,7 @@ if audio_bytes:
                 # Upload til Gemini File API
                 audio_file = genai.upload_file(path=temp_filename)
                 
-                # VIGTIGT: Vent på at Google har færdigbehandlet lyden
+                # Vent på behandling
                 while audio_file.state.name == "PROCESSING":
                     time.sleep(2)
                     audio_file = genai.get_file(audio_file.name)
@@ -67,10 +79,10 @@ if audio_bytes:
                     st.error("Lydbehandling fejlede hos Google.")
                     st.stop()
 
-                # Vælg model (Flash er lynhurtig til transskribering)
-                model = genai.GenerativeModel("gemini-1.5-flash-latest")
+                # Vælg model - Brug af 'models/' præfiks for at undgå 404
+                model = genai.GenerativeModel("models/gemini-1.5-flash")
                 
-                # Din skræddersyede SEO/Ads prompt
+                # SEO/Ads prompt
                 prompt = """Du er en specialist i SEO og Google Ads. 
                 Baseret på denne lydfil, skal du lave et detaljeret og struktureret referat.
                 
@@ -89,7 +101,7 @@ if audio_bytes:
                 st.subheader("📝 Dit Mødereferat")
                 st.markdown(response.text)
                 
-                # Download knap til teamet
+                # Download knap
                 st.download_button(
                     label="Hent referat som .txt",
                     data=response.text,
@@ -97,8 +109,12 @@ if audio_bytes:
                     mime="text/plain"
                 )
                 
+                # Ryd op i midlertidige filer (valgfrit)
+                genai.delete_file(audio_file.name)
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+
             except Exception as e:
-                # Vi viser fejlen, men uden at afsløre API-nøglen
                 st.error(f"Der opstod en fejl: {str(e)}")
 
 # 5. Hjælp til kollegaerne
@@ -109,4 +125,3 @@ with st.expander("💡 Tips til bedre referater"):
     * **Tydelighed:** Nævn gerne tal og specifikke KPI'er højt, så Gemini fanger dem korrekt.
     * **Længde:** Ved møder over 30 minutter er det bedst at uploade en fil fremfor at optage live.
     """)
-
