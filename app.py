@@ -80,7 +80,7 @@ if audio_bytes:
                     st.stop()
 
                 # Vælg model - Brug af 'models/' præfiks for at undgå 404
-                model = genai.GenerativeModel("models/gemini-1.5-flash")
+                model = genai.GenerativeModel("models/gemini-2.0-flash")
                 
                 # SEO/Ads prompt
                 prompt = """Du er en specialist i SEO og Google Ads. 
@@ -125,3 +125,4 @@ with st.expander("💡 Tips til bedre referater"):
     * **Tydelighed:** Nævn gerne tal og specifikke KPI'er højt, så Gemini fanger dem korrekt.
     * **Længde:** Ved møder over 30 minutter er det bedst at uploade en fil fremfor at optage live.
     """)
+
