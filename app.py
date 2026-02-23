@@ -54,7 +54,7 @@ if audio_bytes:
                     f.write(audio_bytes)
                 
                 # Initialiser Gemini modellen (1.5 Flash er hurtig og god til lyd)
-                model = genai.GenerativeModel("models/gemini-1.5-flash")
+                model = genai.GenerativeModel("gemini-3.1-pro-preview")
                 
                 # Upload filen til Googles AI-servere
                 audio_api_file = genai.upload_file(path="temp_meeting_audio.wav")
@@ -98,4 +98,5 @@ with st.expander("💡 Sådan bruger I værktøjet"):
     2. **Længde:** Ved meget lange møder (over 30 min) anbefales det at uploade en fil i stedet for at optage live.
     3. **Sikkerhed:** Optagelsen gemmes kun midlertidigt under analysen og slettes derefter.
     """)
+
 
